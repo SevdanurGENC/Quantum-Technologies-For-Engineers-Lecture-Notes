@@ -20,14 +20,13 @@ Bu bölümde, kuantum hesaplamanın temellerinden başlayarak hibrit kuantum-kla
 * **BÖLÜM 1:** Motivasyon & Giriş
 * **BÖLÜM 2:** Kuantum Hesaplama Temelleri
 * **BÖLÜM 3:** Kuantum Kapıları (Kuantum Alet Çantası)
-* **BÖLÜM 4:** Süperpozisyon 
-* **BÖLÜM 5:** Dolanıklık
-* **BÖLÜM 6:** Kuantum Programlama Temelleri
-* **BÖLÜM 7:** Kuantum Programlama için kullanılan geliştirci ortamları
-* **BÖLÜM 8:** Kuantum Veri Kodlama ve QML Algoritmaları
-* **BÖLÜM 9:** Kuantum Makine Öğrenmesi
-* **BÖLÜM 10:** Mevcut Zorluklar ve Gelecek 
-* **BÖLÜM 11:** Kuantum Geliştiriciliği İçin Yol Haritası ve Tavsiyeler
+* **BÖLÜM 4:** Süperpozisyon ve Dolanıklık
+* **BÖLÜM 5:** Kuantum Programlama Temelleri
+* **BÖLÜM 6:** Kuantum Programlama İçin Kullanılan Geliştirci Ortamları
+* **BÖLÜM 7:** Kuantum Veri Kodlama ve QML Algoritmaları
+* **BÖLÜM 8:** Kuantum Makine Öğrenmesi
+* **BÖLÜM 9:** Mevcut Zorluklar ve Gelecek 
+* **BÖLÜM 10:** Kuantum Geliştiriciliği İçin Yol Haritası ve Tavsiyeler
 
 
 
