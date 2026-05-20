@@ -1,0 +1,213 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans)}
+.wrap{display:grid;grid-template-columns:1fr 300px;gap:0;min-height:460px}
+.sphere-area{position:relative;display:flex;align-items:center;justify-content:center;padding:1rem}
+canvas{display:block}
+.panel{padding:1.25rem 1.25rem 1rem;border-left:0.5px solid var(--color-border-tertiary);display:flex;flex-direction:column;gap:14px}
+.gate-badge{display:inline-block;font-size:12px;padding:3px 10px;border-radius:20px;font-weight:500;margin-bottom:2px}
+.gate-title{font-size:15px;font-weight:500;color:var(--color-text-primary);line-height:1.4}
+.gate-desc{font-size:13px;color:var(--color-text-secondary);line-height:1.65}
+.gate-eq{font-size:12px;color:var(--color-text-tertiary);font-family:var(--font-mono);padding:6px 10px;background:var(--color-background-secondary);border-radius:6px;margin-top:2px}
+.prob-row{display:flex;align-items:center;gap:8px;font-size:12px}
+.prob-label{color:var(--color-text-secondary);width:36px}
+.prob-bar-bg{flex:1;height:8px;background:var(--color-background-secondary);border-radius:4px;overflow:hidden}
+.prob-bar{height:100%;border-radius:4px;transition:width .5s cubic-bezier(.4,0,.2,1)}
+.prob-val{color:var(--color-text-secondary);width:32px;text-align:right}
+.dots{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--color-background-secondary);border:1.5px solid var(--color-border-secondary);transition:all .3s}
+.dot.active{border-color:transparent}
+.nav{display:flex;gap:8px;margin-top:auto}
+.nav button{flex:1;padding:8px;font-size:13px;cursor:pointer;border-radius:8px}
+#btn-prev{background:var(--color-background-secondary);color:var(--color-text-secondary);border:0.5px solid var(--color-border-secondary)}
+#btn-next{border:none;color:#fff;font-weight:500}
+#btn-prev:hover{background:var(--color-background-tertiary)}
+#btn-prev:disabled{opacity:.35;cursor:default}
+#btn-next:disabled{opacity:.5;cursor:default}
+.step-counter{font-size:11px;color:var(--color-text-tertiary);text-align:center;margin-top:2px}
+</style>
+
+<div class="wrap">
+  <div class="sphere-area"><canvas id="c" width="340" height="360"></canvas></div>
+  <div class="panel">
+    <div>
+      <div class="gate-badge" id="badge"></div>
+      <div class="gate-title" id="gtitle"></div>
+    </div>
+    <div class="gate-desc" id="gdesc"></div>
+    <div class="gate-eq" id="geq"></div>
+    <div>
+      <div style="font-size:11px;color:var(--color-text-tertiary);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Ölçüm olasılıkları</div>
+      <div class="prob-row"><span class="prob-label">|0⟩</span><div class="prob-bar-bg"><div class="prob-bar" id="bar0" style="background:#3B6D11"></div></div><span class="prob-val" id="pv0"></span></div>
+      <div class="prob-row" style="margin-top:6px"><span class="prob-label">|1⟩</span><div class="prob-bar-bg"><div class="prob-bar" id="bar1" style="background:#A32D2D"></div></div><span class="prob-val" id="pv1"></span></div>
+    </div>
+    <div>
+      <div style="font-size:11px;color:var(--color-text-tertiary);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">İlerleme</div>
+      <div class="dots" id="dots"></div>
+    </div>
+    <div class="nav">
+      <button id="btn-prev">&#9664; Geri</button>
+      <button id="btn-next">İleri &#9654;</button>
+    </div>
+    <div class="step-counter" id="counter"></div>
+  </div>
+</div>
+
+<script>
+const GATES=[
+  {name:"Başlangıç: |0⟩",cat:"Başlangıç",color:"#3B6D11",catBg:"#EAF3DE",catFg:"#27500A",theta:0,phi:0,p0:1,p1:0,
+   desc:"Pusula iğnesi Kuzey Kutbu'nda durur. Ölçüm yapılsa kesinlikle 0 çıkar. Sistem belirsizlikten tamamen uzak.",
+   eq:"|ψ⟩ = |0⟩"},
+  {name:"H — Hadamard (Para Fırlatıcı)",cat:"Süperpozisyon",color:"#534AB7",catBg:"#EEEDFE",catFg:"#3C3489",theta:Math.PI/2,phi:0,p0:.5,p1:.5,
+   desc:"H kapısı kubiti Kuzey'den Ekvator'a fırlatır. Artık hem 0 hem 1 %50 olasılıkla ölçülür — süperpozisyon!",
+   eq:"|ψ⟩ = (|0⟩ + |1⟩) / √2 = |+⟩"},
+  {name:"X — Pauli-X (Elektrik Anahtarı)",cat:"NOT kapısı",color:"#A32D2D",catBg:"#FCEBEB",catFg:"#791F1F",theta:Math.PI,phi:0,p0:0,p1:1,
+   desc:"X kapısı klasik NOT gibi çalışır. Kuzey'deki iğne tek hamlede Güney'e uçar. 0→1, 1→0.",
+   eq:"|ψ⟩ = |1⟩"},
+  {name:"Z — Pauli-Z (Ayna / Gölge)",cat:"Faz kapısı",color:"#0F6E56",catBg:"#E1F5EE",catFg:"#085041",theta:Math.PI,phi:Math.PI,p0:0,p1:1,
+   desc:"Z kapısı iğneyi yukarı-aşağı hareket ettirmez. Olasılıklar aynı kalır ama 'faz' gizlice arka tarafa döner.",
+   eq:"|ψ⟩ = −|1⟩ (faz değişti, olasılık aynı)"},
+  {name:"Ry(π/3) — Hassas Ayar Düğmesi",cat:"Rotasyon",color:"#854F0B",catBg:"#FAEEDA",catFg:"#633806",theta:Math.PI/3,phi:0,
+   p0:Math.cos(Math.PI/6)**2,p1:Math.sin(Math.PI/6)**2,
+   desc:"Ry kapısı iğneyi Y ekseni etrafında tam θ=60° döndürür. Olasılıklar %75 / %25 olarak hassasça ayarlanır.",
+   eq:"|ψ⟩ = cos(π/6)|0⟩ + sin(π/6)|1⟩"},
+  {name:"H + CNOT — Bell Durumu",cat:"Dolanıklık",color:"#185FA5",catBg:"#E6F1FB",catFg:"#0C447C",theta:Math.PI/2,phi:Math.PI/6,p0:.5,p1:.5,
+   desc:"Hadamard ardından CNOT iki kubiti dolanık yapar. Birini ölçünce diğeri anında belirlenir — mesafeden bağımsız!",
+   eq:"|ψ⟩ = (|00⟩ + |11⟩) / √2"},
+];
+
+let idx=0,prevTheta=null,prevPhi=null,animT=0,animHandle=null;
+const canvas=document.getElementById('c');
+const ctx=canvas.getContext('2d');
+const W=340,H=360,cx=170,cy=180,R=130;
+
+function project(x,y,z){
+  const yz=y*0.5+z;const xz=x*0.7;
+  return{px:cx+xz*R,py:cy-yz*R};
+}
+
+function drawSphere(){
+  ctx.clearRect(0,0,W,H);
+  const isDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;
+  const surfCol=isDark?'rgba(180,190,220,0.04)':'rgba(80,100,160,0.06)';
+  const lineCol=isDark?'rgba(180,190,220,0.18)':'rgba(100,120,180,0.2)';
+  const axCol=isDark?'rgba(200,210,230,0.5)':'rgba(80,100,140,0.55)';
+  const lblCol=isDark?'#a0aabe':'#374151';
+
+  ctx.beginPath();
+  ctx.ellipse(cx,cy,R*0.97,R*0.68,0,0,Math.PI*2);
+  ctx.strokeStyle=lineCol;ctx.lineWidth=.8;ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(cx,cy,R*0.7,R,0,0,Math.PI*2);
+  ctx.stroke();
+  ctx.beginPath();
+  for(let a=0;a<=Math.PI*2;a+=.05){
+    const p=project(Math.cos(a),0,Math.sin(a));
+    a===0?ctx.moveTo(p.px,p.py):ctx.lineTo(p.px,p.py);
+  }
+  ctx.strokeStyle=lineCol;ctx.lineWidth=.7;ctx.stroke();
+
+  const axes=[
+    {v:[0,0,1],label:'|0⟩',off:[0,-16]},
+    {v:[0,0,-1],label:'|1⟩',off:[0,14]},
+    {v:[1,0,0],label:'x',off:[10,0]},
+    {v:[0,1,0],label:'y',off:[8,0]},
+  ];
+  axes.forEach(({v,label,off})=>{
+    const p0=project(0,0,0);const p1=project(v[0]*1.2,v[1]*1.2,v[2]*1.2);
+    ctx.beginPath();ctx.moveTo(p0.px,p0.py);ctx.lineTo(p1.px,p1.py);
+    ctx.strokeStyle=axCol;ctx.lineWidth=1.1;ctx.stroke();
+    ctx.fillStyle=lblCol;ctx.font='13px var(--font-sans, sans-serif)';
+    ctx.textAlign='center';ctx.fillText(label,p1.px+off[0],p1.py+off[1]);
+  });
+}
+
+function drawVector(theta,phi,color,alpha,lineW){
+  const x=Math.sin(theta)*Math.cos(phi);
+  const y=Math.sin(theta)*Math.sin(phi);
+  const z=Math.cos(theta);
+  const p0=project(0,0,0);
+  const p1=project(x,y,z);
+  ctx.save();ctx.globalAlpha=alpha;
+  ctx.beginPath();ctx.moveTo(p0.px,p0.py);ctx.lineTo(p1.px,p1.py);
+  ctx.strokeStyle=color;ctx.lineWidth=lineW;ctx.lineCap='round';ctx.stroke();
+  const dx=p1.px-p0.px,dy=p1.py-p0.py;
+  const len=Math.sqrt(dx*dx+dy*dy);
+  const nx=dx/len,ny=dy/len;
+  const ax=p1.px,ay=p1.py;
+  ctx.beginPath();
+  ctx.moveTo(ax,ay);
+  ctx.lineTo(ax-nx*14+ny*6,ay-ny*14-nx*6);
+  ctx.lineTo(ax-nx*14-ny*6,ay-ny*14+nx*6);
+  ctx.closePath();ctx.fillStyle=color;ctx.fill();
+  ctx.beginPath();ctx.arc(ax,ay,5,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();
+  ctx.restore();
+}
+
+function lerp(a,b,t){return a+(b-a)*t}
+
+function render(){
+  const g=GATES[idx];
+  const targetTheta=g.theta;const targetPhi=g.phi;
+  const t=Math.min(animT,1);
+  const ease=t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+  let curTheta=targetTheta,curPhi=targetPhi;
+  if(prevTheta!==null&&animT<1){
+    curTheta=lerp(prevTheta,targetTheta,ease);
+    curPhi=lerp(prevPhi,targetPhi,ease);
+  }
+  drawSphere();
+  if(prevTheta!==null&&animT<1){
+    drawVector(prevTheta,prevPhi,'#b0b8c8',.3,2);
+  }
+  drawVector(curTheta,curPhi,g.color,1,3);
+  if(animT<1){animT+=.04;animHandle=requestAnimationFrame(render);}
+  else{animHandle=null;}
+}
+
+function startAnim(){
+  if(animHandle)cancelAnimationFrame(animHandle);
+  animT=0;render();
+}
+
+function updateUI(){
+  const g=GATES[idx];
+  document.getElementById('badge').textContent=g.cat;
+  document.getElementById('badge').style.cssText=`background:${g.catBg};color:${g.catFg}`;
+  document.getElementById('gtitle').textContent=g.name;
+  document.getElementById('gdesc').textContent=g.desc;
+  document.getElementById('geq').textContent=g.eq;
+  document.getElementById('bar0').style.width=(g.p0*100)+'%';
+  document.getElementById('bar1').style.width=(g.p1*100)+'%';
+  document.getElementById('pv0').textContent=Math.round(g.p0*100)+'%';
+  document.getElementById('pv1').textContent=Math.round(g.p1*100)+'%';
+  document.getElementById('counter').textContent=`Adım ${idx+1} / ${GATES.length}`;
+  document.getElementById('btn-prev').disabled=idx===0;
+  document.getElementById('btn-next').disabled=idx===GATES.length-1;
+  document.getElementById('btn-next').style.background=g.color;
+  const dots=document.getElementById('dots');
+  dots.innerHTML='';
+  GATES.forEach((_,i)=>{
+    const d=document.createElement('div');
+    d.className='dot'+(i===idx?' active':'');
+    if(i===idx)d.style.background=GATES[i].color;
+    dots.appendChild(d);
+  });
+}
+
+document.getElementById('btn-next').onclick=()=>{
+  if(idx<GATES.length-1){
+    prevTheta=GATES[idx].theta;prevPhi=GATES[idx].phi;
+    idx++;updateUI();startAnim();
+  }
+};
+document.getElementById('btn-prev').onclick=()=>{
+  if(idx>0){
+    prevTheta=GATES[idx].theta;prevPhi=GATES[idx].phi;
+    idx--;updateUI();startAnim();
+  }
+};
+
+updateUI();render();
+</script>
